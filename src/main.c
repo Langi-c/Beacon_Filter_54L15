@@ -3,6 +3,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+ #include <stdio.h>
+ #include <string.h>
+
  #include <zephyr/types.h>
  #include <stddef.h>
  #include <errno.h>
@@ -16,29 +19,44 @@
  #include <zephyr/bluetooth/gatt.h>
  #include <zephyr/sys/byteorder.h>
  
+ /* Dirección MAC del dispositivo a buscar */
+static bt_addr_le_t target_addr;
+
  /* Declaración de la función que parsea los datos de publicidad */
- static void parse_advertising_data(const struct net_buf_simple *ad_buf);
+ static void parse_advertising_data(const struct net_buf_simple *ad_buf, 
+									const char *addr_str, 
+									uint8_t type, 
+									int8_t rssi);
  
  /* Callback que se invoca cuando se encuentra un dispositivo durante el escaneo */
  static void device_found(const bt_addr_le_t *addr, int8_t rssi, uint8_t type,
 			  struct net_buf_simple *ad)
  {
 	 char addr_str[BT_ADDR_LE_STR_LEN];
- 
+	 
+	 char target_addr_str[BT_ADDR_LE_STR_LEN];
+  
+	 target_addr.type = BT_ADDR_LE_PUBLIC;
+	 bt_addr_le_from_str("4C:54:53:F3:10:01", "public", &target_addr);
+
 	 /* Convertimos la dirección a string para imprimirla */
 	 bt_addr_le_to_str(addr, addr_str, sizeof(addr_str));
- 
-	 /* Imprimimos algo de información básica del dispositivo */
-	 printk("[DEVICE]: %s, AD evt type %u, RSSI %i dBm\n", addr_str, type, rssi);
- 
-	 /*
-	  * Eddystone (UID, URL, TLM) a menudo se anuncia en paquetes
-	  * no conectables (por ejemplo, ADV_NONCONN_IND).
-	  * Por ello, NO descartamos los paquetes en base a 'type'.
-	  */
- 
-	 /* Llamamos a la función que recorrerá los campos AD */
-	 parse_advertising_data(ad);
+	 //printk("Addr: %s, RSSI: %i dBm\n", addr_str, rssi);
+	
+	 bt_addr_le_to_str(&target_addr, target_addr_str, sizeof(target_addr_str));
+	 //printk("Target_addr: %s\n", target_addr_str);
+	
+	 if (strcmp(addr_str, target_addr_str) == 0) {
+		//printk("[DEVICE]: %s, AD evt type %u, RSSI %i dBm\n", addr_str, type, rssi);
+
+		parse_advertising_data(ad, addr_str, type, rssi);
+	 }
+	 else {
+		//printk("No es el dispositivo buscado\n");
+		return;
+	 }
+
+
  }
  
  /* Función que inicia el escaneo */
@@ -57,7 +75,7 @@
  }
  
  /* Función para analizar cada campo AD y buscar Eddystone-UID */
- static void parse_advertising_data(const struct net_buf_simple *ad_buf)
+ static void parse_advertising_data(const struct net_buf_simple *ad_buf, const char *addr_str, uint8_t type, int8_t rssi)
  {
 	 /* Creamos una copia local de 'ad_buf' para poder avanzar con net_buf_simple_* */
 	 struct net_buf_simple ad = *ad_buf;
@@ -102,7 +120,8 @@
 						 namespace_id[i] = net_buf_simple_pull_u8(&ad);
 					 }
 					 length -= 10;
- 
+					
+					 printk("[DEVICE]: %s, AD evt type %u, RSSI %i dBm\n", addr_str, type, rssi);
 					 printk("  >> Eddystone-UID detectado\n");
 					 printk("     Tx Power: %d dBm\n", tx_power);
  
@@ -131,7 +150,7 @@
  int main(void)
  {
 	 int err;
- 
+
 	 err = bt_enable(NULL);
 	 if (err) {
 		 printk("Bluetooth init falló (err %d)\n", err);
