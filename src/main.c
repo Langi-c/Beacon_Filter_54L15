@@ -11,6 +11,7 @@
  #include <errno.h>
  #include <zephyr/kernel.h>
  #include <zephyr/sys/printk.h>
+ #include <zephyr/sys/util.h>
  
  #include <zephyr/bluetooth/bluetooth.h>
  #include <zephyr/bluetooth/hci.h>
@@ -19,6 +20,27 @@
  #include <zephyr/bluetooth/gatt.h>
  #include <zephyr/sys/byteorder.h>
  
+/* --- Beacon Advertisement Configuration --- */
+#define DEVICE_NAME         CONFIG_BT_DEVICE_NAME
+#define DEVICE_NAME_LEN     (sizeof(DEVICE_NAME) - 1)
+
+static const struct bt_data beacon_ad[] = {
+	BT_DATA_BYTES(BT_DATA_FLAGS, BT_LE_AD_NO_BREDR),
+	BT_DATA_BYTES(BT_DATA_UUID16_ALL, 0xaa, 0xfe),
+	BT_DATA_BYTES(BT_DATA_SVC_DATA16,
+	              0xaa, 0xfe,         /* Eddystone UUID */
+	              0x00,               /* Eddystone-UID frame type */
+	              0x00,               /* Calibrated Tx power at 0m */
+	              0x53, 0x4C, 0x42, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, /* Namespace ID */
+	              0x01, 0x02, 0x03, 0x04, 0x05, 0x06, /* Instance ID */
+	              0x00, 0x00)        /* RFU */
+};
+
+static const struct bt_data beacon_sd[] = {
+	BT_DATA(BT_DATA_NAME_COMPLETE, DEVICE_NAME, DEVICE_NAME_LEN),
+};
+
+
  /* Dirección MAC del dispositivo a buscar */
 static bt_addr_le_t target_addr;
 
@@ -41,22 +63,11 @@ static bt_addr_le_t target_addr;
 
 	 /* Convertimos la dirección a string para imprimirla */
 	 bt_addr_le_to_str(addr, addr_str, sizeof(addr_str));
-	 //printk("Addr: %s, RSSI: %i dBm\n", addr_str, rssi);
-	
 	 bt_addr_le_to_str(&target_addr, target_addr_str, sizeof(target_addr_str));
-	 //printk("Target_addr: %s\n", target_addr_str);
-	
-	 if (strcmp(addr_str, target_addr_str) == 0) {
-		//printk("[DEVICE]: %s, AD evt type %u, RSSI %i dBm\n", addr_str, type, rssi);
 
+	 if (strcmp(addr_str, target_addr_str) == 0) {
 		parse_advertising_data(ad, addr_str, type, rssi);
 	 }
-	 else {
-		//printk("No es el dispositivo buscado\n");
-		return;
-	 }
-
-
  }
  
  /* Función que inicia el escaneo */
@@ -147,19 +158,49 @@ static bt_addr_le_t target_addr;
 	 }
  }
  
+ 
+ /* Callback que se invoca cuando se ha inicializado Bluetooth */
+static void bluetooth_ready(int err)
+{
+	char addr_s[BT_ADDR_LE_STR_LEN];
+	bt_addr_le_t addr = {0};
+	size_t count = 1;
+
+	if (err) {
+		printk("Bluetooth init failed (err %d)\n", err);
+		return;
+	}
+
+	printk("Bluetooth initialized\n");
+
+	/* Inicia el advertising como beacon Eddystone-UID */
+	err = bt_le_adv_start(BT_LE_ADV_NCONN_IDENTITY, beacon_ad,
+	                        ARRAY_SIZE(beacon_ad), beacon_sd,
+	                        ARRAY_SIZE(beacon_sd));
+	if (err) {
+		printk("Advertising failed to start (err %d)\n", err);
+		return;
+	}
+
+	bt_id_get(&addr, &count);
+	bt_addr_le_to_str(&addr, addr_s, sizeof(addr_s));
+	printk("Beacon started, advertising as %s\n", addr_s);
+
+	/* Inicia el escaneo para buscar el dispositivo objetivo */
+	start_scan();
+}
+ 
  int main(void)
  {
 	 int err;
 
-	 err = bt_enable(NULL);
+
+	 printk("Starting Combined Beacon and Scan Demo\n");
+
+	 err = bt_enable(bluetooth_ready);
 	 if (err) {
-		 printk("Bluetooth init falló (err %d)\n", err);
-		 return 0;
+		 printk("Bluetooth init failed (err %d)\n", err);
 	 }
- 
-	 printk("Bluetooth inicializado\n");
- 
-	 start_scan();
  
 	 return 0;
  }
