@@ -2,7 +2,7 @@
    :name: Central
    :relevant-api: bluetooth
 
-   Implement a Beacon and a Central role (with filter) using Bluetooth LE without connection.
+   Implement an advertising Beacon Eddystone UID and a Central role (with filter by MAC) using Bluetooth LE without connection.
 
 Overview
 ********
