@@ -176,8 +176,15 @@ static bt_addr_le_t target_addr;
 		 memcpy(&beacon_ad[2].data[7], new_namespace_id1, 10);
 	 }
 
+    /* Detiene el escaneo antes de detener la publicidad */
+    int err = bt_le_scan_stop();
+    if (err) {
+        printk("Failed to stop scanning (err %d)\n", err);
+        return -1;
+    }
+
     /* Detiene la publicidad antes de reiniciarla */
-    int err = bt_le_adv_stop();
+     err = bt_le_adv_stop();
     if (err) {
         printk("Failed to stop advertising (err %d)\n", err);
         return -1;
@@ -188,11 +195,19 @@ static bt_addr_le_t target_addr;
 							 ARRAY_SIZE(beacon_ad), beacon_sd,
 							 ARRAY_SIZE(beacon_sd));
 	 if (err) {
-		 printk("Advertising Update failed to start (err %d)\n", err);
+		 printk("Error al iniciar la actualización de la publicidad (err %d)\n", err);
 		 return -1;
 	 }
+
+	 /* Reinicia el escaneo después de iniciar la publicidad */
+	 err = bt_le_scan_start(BT_LE_SCAN_PASSIVE, device_found);
+	 if (err) {
+		 printk("Fallo al iniciar el escaneo (err %d)\n", err);
+		 return -1;
+	 }
+
 	 return 0;
- }
+ } 
 
  /* Callback que se invoca cuando se ha inicializado Bluetooth */
 static void bluetooth_ready(int err)
@@ -206,7 +221,7 @@ static void bluetooth_ready(int err)
 		return;
 	}
 
-	printk("Bluetooth initialized\n");
+	printk("Bluetooth inicializado\n");
 
 	/* Inicia el advertising como beacon Eddystone-UID */
 	err = bt_le_adv_start(BT_LE_ADV_NCONN_IDENTITY, beacon_ad,
@@ -219,7 +234,7 @@ static void bluetooth_ready(int err)
 
 	bt_id_get(&addr, &count);
 	bt_addr_le_to_str(&addr, addr_s, sizeof(addr_s));
-	printk("Beacon started, advertising as %s\n", addr_s);	
+	printk("Beacon iniciado, anunciando como %s\n", addr_s);	
 
 	/* Inicia el escaneo para buscar el dispositivo objetivo */
 	start_scan();
@@ -230,11 +245,11 @@ static void bluetooth_ready(int err)
 	 int err;
 
 
-	 printk("Starting Combined Beacon and Scan Demo\n");
+	 printk("Iniciando demostración combinada de Beacon y Escaneo\n");
 
 	 err = bt_enable(bluetooth_ready);
 	 if (err) {
-		 printk("Bluetooth init failed (err %d)\n", err);
+		 printk("Error al inicializar Bluetooth (err %d)\n", err);
 	 }
  
 	 while (1)
@@ -244,7 +259,7 @@ static void bluetooth_ready(int err)
 		 if (err) {
 			 printk("Error al actualizar el Namespace ID\n");
 		 }
-		 printk("Namespace ID actualizado: %02X%02X%02X%02X%02X%02X%02X%02X%02X%02X\n",
+		 printk("\n\n\nNamespace ID actualizado: %02X%02X%02X%02X%02X%02X%02X%02X%02X%02X\n\n\n",
 			 beacon_ad[2].data[7], beacon_ad[2].data[8], beacon_ad[2].data[9],
 			 beacon_ad[2].data[10], beacon_ad[2].data[11], beacon_ad[2].data[12],
 			 beacon_ad[2].data[13], beacon_ad[2].data[14], beacon_ad[2].data[15],
