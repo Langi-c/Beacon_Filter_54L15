@@ -8,21 +8,20 @@
 #include <zephyr/bluetooth/gap.h>
 #include <zephyr/bluetooth/conn.h>
 
-#define DEVICE_NAME "L4S3C1" // Nombre del dispositivo
+#define DEVICE_NAME "L4S3C 8SL" // Nombre del dispositivo
 #define DEVICE_NAME_LEN (sizeof(DEVICE_NAME) - 1)
 
-
 uint8_t Update = 0;
-uint8_t new_namespace_id0[10] = {0x53, 0x4C, 0x42, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-uint8_t new_namespace_id1[10] = {0x53, 0x4C, 0x42, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+uint8_t new_namespace_id0[6] = {0x53, 0x4C, 0x42, 0x03, 0x00, 0x00};
+uint8_t new_namespace_id1[6] = {0x53, 0x4C, 0x42, 0x04, 0x00, 0x00};
 
 
 // Datos Eddystone-UID (solo UID y Nombre)
 static uint8_t beacon_data[] = {
     0xaa, 0xfe,        /* Eddystone UUID */
-    0x00,              /* Eddystone-UID frame type */
-    0x00,              /* Tx power */
-    0x53, 0x4C, 0x42, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 /* Namespace ID */
+	0x00,              /* Eddystone-UID frame type */
+	0x00,              /* Tx power */
+    0x53, 0x4C, 0x42, 0x01, 0x00, 0x00, /* Namespace ID: 6 Bytes */
 };
 
 // Publicidad optimizada
@@ -39,10 +38,10 @@ static int update_namespace(void)
 	/* Se actualiza el Namespace ID */
 	if (Update == 0) {
 		Update = 1;
-		memcpy(&beacon_ad[2].data[7], new_namespace_id0, 10);
+		memcpy(&beacon_ad[2].data[7], new_namespace_id0, 6);
 	} else {
 		Update = 0;
-		memcpy(&beacon_ad[2].data[7], new_namespace_id1, 10);
+		memcpy(&beacon_ad[2].data[7], new_namespace_id1, 6);
 	}
 
    /* Detiene el escaneo antes de detener la publicidad */
@@ -98,7 +97,7 @@ static void bluetooth_ready(int err)
 }
 
 
-// Función principal
+// Función principal	
 void main(void) {
 	int err;
 
@@ -117,10 +116,9 @@ void main(void) {
 		if (err) {
 			printk("Error al actualizar el Namespace ID\n");
 		}
-		printk("\n\n\nNamespace ID actualizado: %02X%02X%02X%02X%02X%02X%02X%02X%02X%02X\n\n\n", 
-			beacon_ad[2].data[7], beacon_ad[2].data[8], beacon_ad[2].data[9], 
-			beacon_ad[2].data[10], beacon_ad[2].data[11], beacon_ad[2].data[12], 
-			beacon_ad[2].data[13], beacon_ad[2].data[14], beacon_ad[2].data[15], 
-			beacon_ad[2].data[16]);
+		printk("\n\n\n Data: %02X%02X%02X%02X%02X%02X%02X \n\n\n", 
+				beacon_ad[2].data[5], beacon_ad[2].data[6], beacon_ad[2].data[7], beacon_ad[2].data[8], 
+				beacon_ad[2].data[9], beacon_ad[2].data[10], beacon_ad[2].data[11]
+				);
 	}
 }

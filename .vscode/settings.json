@@ -1,0 +1,8 @@
+{
+    "files.associations": {
+        "gatt.h": "c"
+    },
+    "nrf-connect.debugging.bindings": {
+        "${workspaceFolder}/build/central_54L15": "Launch central_54L15"
+    }
+}

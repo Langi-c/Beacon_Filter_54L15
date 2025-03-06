@@ -1,0 +1,12 @@
+{
+	"version": "0.2.0",
+	"configurations": [
+		{
+			"type": "nrf-connect",
+			"request": "launch",
+			"name": "Launch central_54L15",
+			"config": "c:/nordic/myApps/myApps/2.8.0/54L15/central_54L15/build_1/central_54L15",
+			"runToEntryPoint": "main"
+		}
+	]
+}
